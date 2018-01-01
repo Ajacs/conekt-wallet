@@ -11,9 +11,10 @@ class TransactionsController < ApplicationController
   end
 
   def create
-    puts "PARAMS -> ", transaction_params
+    transaction_service = TransactionsService.new(transaction: transaction_params)
+    response = transaction_service.process_transaction
     @transaction = Transaction.create!(transaction_params)
-    json_response(@transaction, :created)
+    json_response(response, response['status'])
   end
 
   private
