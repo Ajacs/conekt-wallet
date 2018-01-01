@@ -20,27 +20,29 @@ class TransactionsService
     response = nil
     if enough_balance?
       #start the transaction with PROCESSING STATUS
-      new_transaction = Transaction.create(
-          {
-          user_id: @transaction[:user_id],
-          account_id: @transaction[:account_id],
-          amount: @transaction[:amount],
-          destination_account: @transaction[:destination_account]
-          }).save
+      new_transaction = create_transaction
+      transaction_status = {
+        error: 0,
+        pending: 1,
+        success: 2
+      }
+      new_transaction_history = create_transaction_history(new_transaction, transaction_status[:pending])
+
       if transfer_to_target_account && discount_from_source_account && transfer_to_main_account
         #Update the transaction status to SUCCESS
+        TransactionHistory.update(new_transaction_history[:id], transaction_status: transaction_status[:success])
         response = {
-        'amount' => amount,
-        'body' => 'SUCCESS',
-            'status' => :created
+          'amount' => amount,
+          'body' => 'SUCCESS',
+          'status' => :created
         }
       else
-        #Update the transaction status to ERROR
+        TransactionHistory.update(new_transaction_history[:id], transaction_status: transaction_status[:error])
       end
     else
       response = {
-          'body' => 'The amount of your transactions exceeds the balance, please modify your cantity',
-          'status' => :bad_request
+        'body' => 'The amount of your transactions exceeds the balance, please modify your cantity',
+        'status' => :bad_request
       }
     end
     response
@@ -78,6 +80,25 @@ class TransactionsService
       end
   end
 
+  def create_transaction(internal: true)
+    Transaction.create!(
+      user_id: @transaction[:user_id],
+      account_id: @transaction[:account_id],
+      amount: @transaction[:amount],
+      destination_account: @transaction[:destination_account],
+      commission: transaction_commission,
+      transaction_type: internal ? 0 : 1
+    ).tap(&:save)
+  end
+
+  def create_transaction_history(transaction, status)
+    TransactionHistory.create(
+      transaction_id: transaction['id'],
+      transaction_status: status,
+      status_message: ''
+    ).tap(&:save)
+  end
+
   def total_amount
     commission = transaction_commission
     @transaction[:amount].to_f + commission
@@ -96,9 +117,9 @@ class TransactionsService
     account_balance >= total
   end
 
-  def external_gateway_call
+  def external_gateway_call(amount)
     sleep(5)
-    puts "SE HA PROCESADO TU SOPLICITUD"
+    puts "SE HA PROCESADO TU SOLICITUD"
   end
 
 end

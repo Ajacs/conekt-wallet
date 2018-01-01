@@ -11,9 +11,7 @@ class TransactionsController < ApplicationController
   end
 
   def create
-    transaction_service = TransactionsService.new(transaction: transaction_params)
     response = transaction_service.process_transaction
-    @transaction = Transaction.create!(transaction_params)
     json_response(response, response['status'])
   end
 
@@ -32,5 +30,9 @@ class TransactionsController < ApplicationController
 
   def set_transaction
     @transaction = Transaction.find(params[:id])
+  end
+
+  def transaction_service
+    @transaction_service ||= TransactionsService.new(transaction: transaction_params)
   end
 end

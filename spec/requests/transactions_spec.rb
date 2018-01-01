@@ -97,6 +97,8 @@ RSpec.describe 'Transactions API', type: :request do
         expect(general_account_balance[:balance]).to eq(TRANSACTION_COMMISSION)
       end
 
+      it 'generates a transaction with the status PROCESSING'
+
     end
 
     context 'when the amount is higher than the account balance' do
