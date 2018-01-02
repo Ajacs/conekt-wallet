@@ -1,9 +1,9 @@
 class AccountsController < ApplicationController
-  before_action :set_account, only: [:show, :update, :destroy]
+  before_action :set_account, only: [:show]
 
   #GET accounts
   def index
-    @accounts = Account.all
+    @accounts = current_user.accounts.all
     json_response(@accounts)
   end
 
@@ -14,7 +14,7 @@ class AccountsController < ApplicationController
 
   #POST /accounts
   def create
-    @account = Account.create!(account_params)
+    @account = current_user.accounts.create!(account_params)
     json_response(@account, :created)
   end
 

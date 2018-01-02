@@ -2,13 +2,17 @@ require 'rails_helper'
 
 RSpec.describe 'Transactions API', type: :request do
 
+  let(:user) { create(:user) }
   let!(:transactions) { create_list(:transaction, 10) }
-  let!(:accounts) { create_list(:account, 1)}
+  let!(:accounts) { create_list(:account, 2)}
   let(:transaction_id) { transactions.first.id }
+  let!(:accounts) { create(:gaccount)}
+  let(:headers) { valid_headers }
+
 
   describe 'GET /transactions' do
 
-    before { get '/transactions' }
+    before { get '/transactions', headers: headers }
 
     it 'returns the transaction list' do
       expect(json).not_to be_empty
@@ -21,7 +25,7 @@ RSpec.describe 'Transactions API', type: :request do
   end
 
   describe 'GET /accounts/:id' do
-    before { get "/transactions/#{transaction_id}" }
+    before { get "/transactions/#{transaction_id}", headers: headers }
 
     context 'when the transaction exists' do
       it 'return the account' do
@@ -50,46 +54,80 @@ RSpec.describe 'Transactions API', type: :request do
   describe 'POST /transactions' do
     context 'when the request is correct' do
 
-      let(:transaction_params) {
+      let(:transaction_params) do
         {
-            amount: 500.80,
-            user_id: 1,
-            account_id: 1,
-            transaction_type: 0,
-            transaction_status: 0,
-            destination_account: 2
+          amount: 500.80,
+          user_id: 1,
+          account_id: 1,
+          transaction_type: 0,
+          transaction_status: 0,
+          destination_account: 2
+        }.to_json
+      end
 
-        }
-      }
+      let(:source_account_balance) { Account.find(1)[:balance] }
+      let(:target_account_balance) { Account.find(2)[:balance] }
+      let(:general_account_balance) { Account.find_by account_type: 'GENERAL'}
+      let(:current_transaction) { Transaction.find_by account_id: 1 }
 
-      before { post '/transactions', params: transaction_params}
+      # Amounts from transactions constants
+      TRANSACTION_AMOUNT = 500.80
+      TARGET_ACCOUNT_FINAL_BALANCE = 3001.30
+      SOURCE_ACCOUNT_FINAL_BALANCE = 1976.676
+      TRANSACTION_COMMISSION = 23.024
+
+      before { post '/transactions', params: transaction_params, headers: headers}
 
       it 'creates a new transaction' do
-        expect(json['amount']).to eq(500.80)
+        expect(json['amount']).to eq(TRANSACTION_AMOUNT)
       end
+
+      it 'return status code 201' do
+        expect(response).to have_http_status(201)
+      end
+
+      it 'add the amount to the destination account' do
+        expect(target_account_balance).to eq(TARGET_ACCOUNT_FINAL_BALANCE)
+      end
+
+      it 'subtract the total amount from the balance of the user' do
+        expect(source_account_balance).to eq(SOURCE_ACCOUNT_FINAL_BALANCE)
+      end
+
+      it 'add the commission to the general account' do
+        expect(general_account_balance[:balance]).to eq(TRANSACTION_COMMISSION)
+      end
+
+      it 'generates a transaction for the account ' do
+        expect(current_transaction[:amount]).to eq(350.0)
+      end
+
     end
 
     context 'when the amount is higher than the account balance' do
 
-      let(:transaction_params) {
+      let(:transaction_params) do
         {
-            amount: 5000.0,
-            user_id: 1,
-            account_id: 1,
-            transaction_type: 0,
-            transaction_status: 0,
-            destination_account: 2
-        }
-      }
+          amount: 5000.0,
+          user_id: 1,
+          account_id: 1,
+          transaction_type: 0,
+          transaction_status: 0,
+          destination_account: 2
+      }.to_json
 
-      before { post '/transactions', params: transaction_params }
+      end
+
+      before { post '/transactions', params: transaction_params, headers: headers }
+
 
       it 'should get an error message' do
         expect(response.body).to match(/The amount of your transactions exceeds the balance, please modify your cantity/)
       end
-    end
 
-    context 'when the amount the sum of the amount plus commissions exceeds the balance' do
+      it 'returns status code 400' do
+        expect(response).to have_http_status(400)
+      end
 
     end
 
