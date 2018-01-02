@@ -51,5 +51,3 @@ gem 'apipie-rails'
 # Use ActiveModel has_secure_password
 gem 'bcrypt'
 gem 'jwt'
-gem 'aescrypt'
-gem 'swagger-docs'
