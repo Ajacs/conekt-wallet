@@ -1,4 +1,4 @@
-# README
+# Conekt-Wallet [Beta]
 
 This is the laboratory for Conekta, add request tests for the endpoints (transactions and accounts)
 , uses JWT for the authentication manage.
