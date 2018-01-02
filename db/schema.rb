@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20180101011757) do
+ActiveRecord::Schema.define(version: 20180102180816) do
 
   create_table "account_balance_histories", force: :cascade do |t|
     t.integer "account_id"
@@ -30,6 +30,8 @@ ActiveRecord::Schema.define(version: 20180101011757) do
     t.boolean "available"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "account_number"
+    t.string "obfuscated_account"
     t.index ["user_id"], name: "index_accounts_on_user_id"
   end
 

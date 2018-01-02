@@ -9,6 +9,25 @@
 
 #We create users
 #
+#
+user1 = User.create(
+{
+    name: 'Test1',
+    lastname: 'Test1',
+    email: 'test1@mail.com',
+    password_digest: 'test1',
+    password_confirmation: 'test1'
+}).tap(&:save)
+
+user2 = User.create(
+    {
+        name: 'Test2',
+        lastname: 'Test2',
+        email: 'test2@mail.com',
+        password_digest: 'test2',
+        password_confirmation: 'test2'
+    }).tap(&:save)
+
 root = User.create(
     {
         name: 'Root',
@@ -18,23 +37,6 @@ root = User.create(
         password_confirmation: 'secretpassword'
     }).tap(&:save)
 
-user1 = User.create(
-    {
-                name: 'Adderly',
-                lastname: 'Jauregui',
-                email: 'ajacs1104@gmail.com',
-                password_digest: 'adderlyjc',
-                password_confirmation: 'adderlyjc'
-            }).tap(&:save)
-
-user2 = User.create(
-    {
-        name: 'Reyna',
-        lastname: 'Lopez',
-        email: 'rlopez@gmail.com',
-        password_digest: 'reynal',
-        password_confirmation: 'reynal'
-    }).tap(&:save)
 
 #We create account for the users
 
