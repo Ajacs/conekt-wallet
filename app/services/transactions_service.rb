@@ -3,7 +3,7 @@ require 'json'
 class TransactionsService
 
   def initialize(params)
-    @transaction = params[:transaction]
+    @transaction = params[:new_transaction]
   end
 
   def create_income
@@ -19,25 +19,24 @@ class TransactionsService
     amount = @transaction[:amount].to_f
     response = nil
     if enough_balance?
-      #start the transaction with PROCESSING STATUS
       new_transaction = create_transaction
-      transaction_status = {
-        error: 0,
-        pending: 1,
-        success: 2
-      }
-      new_transaction_history = create_transaction_history(new_transaction, transaction_status[:pending])
+      new_transaction_history = create_transaction_history(new_transaction, Transaction.transaction_statuses[:pending])
 
       if transfer_to_target_account && discount_from_source_account && transfer_to_main_account
-        #Update the transaction status to SUCCESS
-        TransactionHistory.update(new_transaction_history[:id], transaction_status: transaction_status[:success])
+        Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:success])
+        TransactionHistory.update(new_transaction_history[:id], transaction_status: Transaction.transaction_statuses[:success])
         response = {
           'amount' => amount,
           'body' => 'SUCCESS',
           'status' => :created
         }
       else
-        TransactionHistory.update(new_transaction_history[:id], transaction_status: transaction_status[:error])
+        Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:error])
+        TransactionHistory.update(new_transaction_history[:id], Transaction.transaction_statuses[:error])
+        response = {
+            'body'=> 'Server error, please retry',
+            'status' => :internal_server_error
+        }
       end
     else
       response = {
@@ -46,7 +45,6 @@ class TransactionsService
       }
     end
     response
-    #transaction_type = @transaction.transaction_type === TransactionTypes::INCOME
   end
 
 
@@ -57,7 +55,33 @@ class TransactionsService
     target_account = Account.find(@transaction[:destination_account])
     target_account_balance = target_account[:balance].to_f
     target_account_balance += @transaction[:amount].to_f
-    Account.update(@transaction[:destination_account], balance: target_account_balance)
+    Account.transaction do
+      begin
+        Account.update(@transaction[:destination_account], balance: target_account_balance)
+        make_income_transaction
+      rescue Exception => exc
+        puts "transfer_to_target_account error: log this error in some database or file", exc
+      end
+    end
+  end
+
+  def make_income_transaction
+    target_account = Account.find_by id: @transaction[:destination_account]
+    target_account_owner = User.find_by id: target_account[:id]
+    begin
+      Transaction.create!(
+          user_id: target_account_owner[:id],
+          account_id: @transaction[:destination_account],
+          amount: @transaction[:amount],
+          destination_account: @transaction[:destination_account],
+          transaction_status: Transaction.transaction_statuses[:success],
+          commission: 0,
+          transaction_target_type: @transaction[:transaction_target_type],
+          transaction_type: Transaction.transaction_types[:income] #ESTE CAMPO SE REFIERE A : TIPO "FUND", "INCOME", "EXPENSE"
+      ).save!
+    rescue Exception => exc
+      puts "make_income_transaction error: log this error in some database or file", exc
+    end
   end
 
   def discount_from_source_account
@@ -65,7 +89,13 @@ class TransactionsService
     source_account = Account.find(@transaction[:account_id])
     source_account_balance = source_account[:balance].to_f
     source_account_balance -= total
-    Account.update(@transaction[:account_id], balance: source_account_balance)
+    Account.transaction do
+      begin
+        Account.update(@transaction[:account_id], balance: source_account_balance)
+      rescue Exception => exc
+        puts "discount_from_source_account error: log this error in some database or file", exc
+      end
+    end
   end
 
   def transaction_commission
@@ -80,23 +110,38 @@ class TransactionsService
       end
   end
 
-  def create_transaction(internal: true)
-    Transaction.create!(
-      user_id: @transaction[:user_id],
-      account_id: @transaction[:account_id],
-      amount: @transaction[:amount],
-      destination_account: @transaction[:destination_account],
-      commission: transaction_commission,
-      transaction_type: internal ? 0 : 1
-    ).tap(&:save)
+  def create_transaction
+    Transaction.transaction do
+      begin
+        Transaction.create!(
+          user_id: @transaction[:user_id],
+          account_id: @transaction[:account_id],
+          amount: @transaction[:amount],
+          destination_account: @transaction[:destination_account],
+          commission: transaction_commission,
+          transaction_target_type: @transaction[:transaction_target_type],
+          transaction_status: Transaction.transaction_statuses[:pending],
+          transaction_type: Transaction.transaction_types[:expense]
+        ).tap(&:save)
+      rescue Exception => exc
+        puts "create_transaction error: log this error in some database or file", exc
+      end
+    end
+
   end
 
   def create_transaction_history(transaction, status)
-    TransactionHistory.create(
-      transaction_id: transaction['id'],
-      transaction_status: status,
-      status_message: ''
-    ).tap(&:save)
+    TransactionHistory.transaction do
+      begin
+        TransactionHistory.create(
+          transaction_id: transaction['id'],
+          transaction_status: status,
+          status_message: ''
+        ).tap(&:save)
+      rescue Exception => exc
+        puts "create_transaction_history error: log this error in some database or file", exc
+      end
+    end
   end
 
   def total_amount
@@ -107,7 +152,13 @@ class TransactionsService
   def transfer_to_main_account
     general_account = Account.find_by account_type: 'GENERAL'
     general_account_balance = general_account[:balance]
-    Account.update(general_account[:id], balance: general_account_balance + transaction_commission)
+    Account.transaction do
+      begin
+        Account.update(general_account[:id], balance: general_account_balance + transaction_commission)
+      rescue Exception => exc
+        puts "transfer_to_main_account error: log this error in some database or file", exc
+      end
+    end
   end
 
   def enough_balance?

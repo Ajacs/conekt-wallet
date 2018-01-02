@@ -53,7 +53,7 @@ ActiveRecord::Schema.define(version: 20180101011757) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.float "commission"
-    t.string "transaction_target_type"
+    t.integer "transaction_target_type"
     t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["user_id"], name: "index_transactions_on_user_id"
   end
