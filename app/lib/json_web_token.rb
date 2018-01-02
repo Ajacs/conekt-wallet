@@ -16,6 +16,6 @@ class JsonWebToken
       # rescue from expiry exception
   rescue JWT::ExpiredSignature, JWT::VerificationError => e
     # raise custom error to be handled by custom handler
-    raise ExceptionHandler::ExpiredSignature, e.message
+    raise ExceptionHandler::InvalidToken, e.message
   end
 end
