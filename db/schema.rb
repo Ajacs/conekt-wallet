@@ -10,7 +10,18 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20171230225008) do
+ActiveRecord::Schema.define(version: 20180101011757) do
+
+  create_table "account_balance_histories", force: :cascade do |t|
+    t.integer "account_id"
+    t.integer "transaction_id"
+    t.float "last_balance"
+    t.float "new_balance"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_account_balance_histories_on_account_id"
+    t.index ["transaction_id"], name: "index_account_balance_histories_on_transaction_id"
+  end
 
   create_table "accounts", force: :cascade do |t|
     t.integer "user_id"
@@ -22,16 +33,27 @@ ActiveRecord::Schema.define(version: 20171230225008) do
     t.index ["user_id"], name: "index_accounts_on_user_id"
   end
 
+  create_table "transaction_histories", force: :cascade do |t|
+    t.integer "transaction_id"
+    t.integer "transaction_status"
+    t.string "status_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["transaction_id"], name: "index_transaction_histories_on_transaction_id"
+  end
+
   create_table "transactions", force: :cascade do |t|
     t.integer "user_id"
     t.integer "account_id"
-    t.string "transaction_type"
+    t.integer "transaction_type"
     t.float "amount"
-    t.string "transaction_status"
+    t.integer "transaction_status"
     t.string "status_message"
     t.string "destination_account"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.float "commission"
+    t.integer "transaction_target_type"
     t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["user_id"], name: "index_transactions_on_user_id"
   end
