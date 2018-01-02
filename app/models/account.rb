@@ -3,7 +3,7 @@ class Account < ApplicationRecord
   before_create :set_active_account
 
   #validations
-  validates_presence_of :user, :account_type
+  validates_presence_of :user
 
   def set_active_account
     self.available = true

@@ -16,42 +16,65 @@ class TransactionsService
   end
 
   def process_transaction
-    amount = @transaction[:amount].to_f
+    transaction_type_fund = @transaction[:transaction_type] == "fund"
     response = nil
-    if enough_balance?
-      new_transaction = create_transaction
-      new_transaction_history = create_transaction_history(new_transaction, Transaction.transaction_statuses[:pending])
-
-      if transfer_to_target_account && discount_from_source_account && transfer_to_main_account
-        Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:success])
-        TransactionHistory.update(new_transaction_history[:id], transaction_status: Transaction.transaction_statuses[:success])
-        response = {
+    amount = @transaction[:amount].to_f
+    if transaction_type_fund && external_gateway_call[:status] == 202 && fund_account && transfer_to_target_account
+      response = {
           'amount' => amount,
           'body' => 'SUCCESS',
           'status' => :created
-        }
+      }
+    else
+      if enough_balance?
+        transaction_type = Transaction.transaction_types[:expense]
+        new_transaction = create_transaction(transaction_type)
+        new_transaction_history = create_transaction_history(new_transaction, Transaction.transaction_statuses[:pending])
+
+        if transfer_to_target_account && discount_from_source_account && transfer_to_main_account
+          Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:success])
+          TransactionHistory.update(new_transaction_history[:id], transaction_status: Transaction.transaction_statuses[:success])
+          response = {
+              'amount' => amount,
+              'body' => 'SUCCESS',
+              'status' => :created
+          }
+        else
+          Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:error])
+          TransactionHistory.update(new_transaction_history[:id], Transaction.transaction_statuses[:error])
+          response = {
+              'body'=> 'Server error, please retry',
+              'status' => :internal_server_error
+          }
+        end
       else
-        Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:error])
-        TransactionHistory.update(new_transaction_history[:id], Transaction.transaction_statuses[:error])
         response = {
-            'body'=> 'Server error, please retry',
-            'status' => :internal_server_error
+            'body' => 'The amount of your transactions exceeds the balance, please modify your cantity',
+            'status' => :bad_request
         }
       end
-    else
-      response = {
-        'body' => 'The amount of your transactions exceeds the balance, please modify your cantity',
-        'status' => :bad_request
-      }
+      response
     end
-    response
   end
-
 
 
   private
 
+  def fund_account
+    Transaction.transaction do
+      begin
+        transaction_type = Transaction.transaction_types[:fund]
+        create_transaction(transaction_type)
+      rescue Exception => exc
+        puts "fund_account error: log this error in some database or file", exc
+      end
+
+      end
+  end
+
+
   def transfer_to_target_account
+    puts "TRANSFER TO TARGET ACCCOUNT"
     target_account = Account.find(@transaction[:destination_account])
     target_account_balance = target_account[:balance].to_f
     target_account_balance += @transaction[:amount].to_f
@@ -110,7 +133,7 @@ class TransactionsService
       end
   end
 
-  def create_transaction
+  def create_transaction(transaction_type)
     Transaction.transaction do
       begin
         Transaction.create!(
@@ -121,7 +144,7 @@ class TransactionsService
           commission: transaction_commission,
           transaction_target_type: @transaction[:transaction_target_type],
           transaction_status: Transaction.transaction_statuses[:pending],
-          transaction_type: Transaction.transaction_types[:expense]
+          transaction_type: transaction_type
         ).tap(&:save)
       rescue Exception => exc
         puts "create_transaction error: log this error in some database or file", exc
@@ -168,9 +191,12 @@ class TransactionsService
     account_balance >= total
   end
 
-  def external_gateway_call(amount)
+  def external_gateway_call
     sleep(5)
-    puts "SE HA PROCESADO TU SOLICITUD"
+    {
+        status: 202,
+        amount: @transaction[:amount]
+    }
   end
 
 end

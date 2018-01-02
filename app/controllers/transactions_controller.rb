@@ -27,7 +27,8 @@ class TransactionsController < ApplicationController
         :user_id,
         :account_id,
         :destination_account,
-        :transaction_target_type
+        :transaction_target_type,
+        :external_account
     )
   end
 

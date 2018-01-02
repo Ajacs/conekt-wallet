@@ -61,7 +61,8 @@ RSpec.describe 'Transactions API', type: :request do
           account_id: 1,
           transaction_type: 0,
           transaction_status: 0,
-          destination_account: 2
+          destination_account: 2,
+          transaction_target_type: 0
         }.to_json
       end
 
