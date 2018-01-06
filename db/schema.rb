@@ -12,9 +12,12 @@
 
 ActiveRecord::Schema.define(version: 20180102180816) do
 
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "plpgsql"
+
   create_table "account_balance_histories", force: :cascade do |t|
-    t.integer "account_id"
-    t.integer "transaction_id"
+    t.bigint "account_id"
+    t.bigint "transaction_id"
     t.float "last_balance"
     t.float "new_balance"
     t.datetime "created_at", null: false
@@ -24,7 +27,7 @@ ActiveRecord::Schema.define(version: 20180102180816) do
   end
 
   create_table "accounts", force: :cascade do |t|
-    t.integer "user_id"
+    t.bigint "user_id"
     t.string "account_type"
     t.float "balance"
     t.boolean "available"
@@ -36,7 +39,7 @@ ActiveRecord::Schema.define(version: 20180102180816) do
   end
 
   create_table "transaction_histories", force: :cascade do |t|
-    t.integer "transaction_id"
+    t.bigint "transaction_id"
     t.integer "transaction_status"
     t.string "status_message"
     t.datetime "created_at", null: false
@@ -45,8 +48,8 @@ ActiveRecord::Schema.define(version: 20180102180816) do
   end
 
   create_table "transactions", force: :cascade do |t|
-    t.integer "user_id"
-    t.integer "account_id"
+    t.bigint "user_id"
+    t.bigint "account_id"
     t.integer "transaction_type"
     t.float "amount"
     t.integer "transaction_status"
@@ -70,4 +73,10 @@ ActiveRecord::Schema.define(version: 20180102180816) do
     t.datetime "updated_at", null: false
   end
 
+  add_foreign_key "account_balance_histories", "accounts"
+  add_foreign_key "account_balance_histories", "transactions"
+  add_foreign_key "accounts", "users"
+  add_foreign_key "transaction_histories", "transactions"
+  add_foreign_key "transactions", "accounts"
+  add_foreign_key "transactions", "users"
 end

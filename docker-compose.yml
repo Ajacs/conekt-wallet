@@ -1,0 +1,17 @@
+version: '2'
+services:
+  db:
+    image: postgres
+  web:
+    build: .
+    volumes:
+      - .:/conekt-wallet
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      PGHOST: "db"
+      PGUSER: "postgres"
+      PGDBNAME: "conekt_wallet_production"
+    depends_on:
+      - db
