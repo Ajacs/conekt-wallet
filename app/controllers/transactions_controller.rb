@@ -1,8 +1,6 @@
 class TransactionsController < ApplicationController
   before_action :set_transaction, only: [:show]
 
-  api :GET, '/transactions/:id'
-  param :id, :number
   def index
     by_user_id = Transaction.find_by user_id: params[:user_id]
     @transactions = params[:user_id] ? by_user_id : Transaction.all
