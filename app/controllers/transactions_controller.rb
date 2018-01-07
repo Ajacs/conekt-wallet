@@ -1,5 +1,6 @@
 class TransactionsController < ApplicationController
   before_action :set_transaction, only: [:show]
+  before_action :sufficient_balance?, :accounts_exists?, :source_and_target_equals?, only: [:create]
 
   def index
     by_user_id = Transaction.find_by user_id: params[:user_id]
@@ -45,9 +46,16 @@ class TransactionsController < ApplicationController
     end
   end
 
-  def has_enough_balance?
+  def sufficient_balance?
     if transaction_params[:transaction_type] != Transaction.transaction_types[:fund]
-      return enough_balance?(transaction_params) || raise(ExceptionHandler::InsufficientFunds, Message.insufficient_funds)
+      enough_balance?(transaction_params) || raise(ExceptionHandler::InsufficientFunds, Message.insufficient_funds)
     end
   end
+
+  def source_and_target_equals?
+    if transaction_params[:account_id] == transaction_params[:destination_account]
+      raise(ExceptionHandler::SameSourceTargetAccount, Message.same_source_target_account)
+    end
+  end
+
 end

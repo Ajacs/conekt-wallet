@@ -35,4 +35,8 @@ class Message
   def self.insufficient_funds
     'Sorry, there are not enough funds to complete your operation, please change the amount'
   end
+
+  def self.same_source_target_account
+    'The source account can not be the same on transferences'
+  end
 end

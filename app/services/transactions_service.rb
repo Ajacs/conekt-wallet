@@ -6,110 +6,119 @@ class TransactionsService
     @transaction = params[:new_transaction]
   end
 
-  def create_income
-
-  end
-
-
-  def create_expense
-
-  end
-
   def process_fund_account
-    new_transaction = create_transaction()
+    response = nil
+    new_transaction = create_transaction(@transaction[:transaction_type])
+    if external_gateway_call[:status] == 202
+      if generate_charge_and_deposit
+        Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:success])
+        response = {
+            'originalAmount' =>  @transaction[:amount],
+            'transactionCommission' => transaction_commission,
+            'totalDeposited' => @transaction[:amount] - transaction_commission,
+            'status' => :created
+        }
+      else
+        Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:error])
+        response = {
+            'body'=> 'Server error, please retry',
+            'status' => :internal_server_error
+        }
+      end
+    end
+    response
   end
 
-  def process_transaction
-    case 
-    when @transaction[:transaction_type] == "fund" then process_fund_account
-    transaction_type_fund = @transaction[:transaction_type] == "fund"
+  def process_transference
     response = nil
-    amount = @transaction[:amount].to_f
-    if transaction_type_fund && external_gateway_call[:status] == 202 && fund_account && transfer_to_target_account
+    new_transaction = create_transaction(@transaction[:transaction_type])
+    external_transference = @transaction[:transaction_target_type] == 'external' && external_gateway_call[:status] == 202 && generate_charge_and_deposit
+    internal_transference = @transaction[:transaction_target_type] == 'internal' && generate_charge_and_transfer
+
+    if external_transference || internal_transference
+      Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:success])
       response = {
-          'amount' => amount,
-          'body' => 'SUCCESS',
+          'originalAmount' =>  @transaction[:amount],
+          'transactionCommission' => transaction_commission,
+          'totalTransferred' => @transaction[:amount] - transaction_commission,
           'status' => :created
       }
     else
-      if enough_balance?
-        transaction_type = Transaction.transaction_types[:expense]
-        new_transaction = create_transaction(transaction_type)
-        new_transaction_history = create_transaction_history(new_transaction, Transaction.transaction_statuses[:pending])
-
-        if transfer_to_target_account && discount_from_source_account && transfer_to_main_account
-          Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:success])
-          TransactionHistory.update(new_transaction_history[:id], transaction_status: Transaction.transaction_statuses[:success])
-          response = {
-              'amount' => amount,
-              'body' => 'SUCCESS',
-              'status' => :created
-          }
-        else
-          Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:error])
-          TransactionHistory.update(new_transaction_history[:id], Transaction.transaction_statuses[:error])
-          response = {
-              'body'=> 'Server error, please retry',
-              'status' => :internal_server_error
-          }
-        end
-      else
-        response = {
-            'body' => 'The amount of your transactions exceeds the balance, please modify your cantity',
-            'status' => :bad_request
-        }
-      end
-      response
+      Transaction.update(new_transaction[:id], transaction_status: Transaction.transaction_statuses[:error])
+      response = {
+          'body'=> 'Server error, please retry',
+          'status' => :internal_server_error
+      }
     end
+    response
+  end
+
+  def process_transaction
+    @transaction[:transaction_type] == 'fund' ? process_fund_account : process_transference
   end
 
 
   private
+
+  def generate_charge_and_deposit
+    commission = transaction_commission
+    total_to_deposit = @transaction[:amount] - commission
+    transfer_to_target_account(total_to_deposit) && transfer_to_main_account(commission)
+  end
+
+  def generate_charge_and_transfer
+    commission = transaction_commission
+    if @transaction[:transaction_target_type] == 'internal'
+      discount_from_source_account && transfer_to_main_account(commission) && transfer_to_target_account(@transaction[:amount])
+    else
+      discount_from_source_account && transfer_to_main_account(commission)
+    end
+  end
+
 
   def fund_account
     Transaction.transaction do
       begin
         transaction_type = Transaction.transaction_types[:fund]
         create_transaction(transaction_type)
-      rescue Exception => exc
-        puts "fund_account error: log this error in some database or file", exc
+      rescue ActiveRecord::StatementInvalid => exc
+        puts 'fund_account error: log this error in some database or file', exc
       end
 
       end
   end
 
 
-  def transfer_to_target_account
+  def transfer_to_target_account(amount)
     target_account = Account.find(@transaction[:destination_account])
     target_account_balance = target_account[:balance].to_f
-    target_account_balance += @transaction[:amount].to_f
+    target_account_balance += amount
     Account.transaction do
       begin
-        Account.update(target_account[:id], balance: target_account_balance)
+        Account.update!(target_account[:id], balance: target_account_balance)
         make_income_transaction
-      rescue Exception => exc
-        puts "transfer_to_target_account error: log this error in some database or file", exc
+      rescue ActiveRecord::StatementInvalid => exc
+        puts 'transfer_to_target_account error: log this error in some database or file', exc
+      end
+    end
+  end
+
+  def transfer_to_main_account(amount)
+    general_account = Account.find_by account_type: 'GENERAL'
+    general_account_balance = general_account[:balance]
+    Account.transaction do
+      begin
+        Account.update(general_account[:id], balance: general_account_balance + amount)
+      rescue ActiveRecord::StatementInvalid => exc
+        puts 'transfer_to_main_account error: log this error in some database or file', exc
       end
     end
   end
 
   def make_income_transaction
     target_account = Account.find(@transaction[:destination_account])
-    target_account_owner = User.find_by id: target_account[:id]
-    begin
-      Transaction.create!(
-          user_id: target_account_owner[:id],
-          account_id: @transaction[:destination_account],
-          amount: @transaction[:amount],
-          destination_account: @transaction[:destination_account],
-          transaction_status: Transaction.transaction_statuses[:success],
-          commission: 0,
-          transaction_target_type: @transaction[:transaction_target_type],
-          transaction_type: Transaction.transaction_types[:transference] #ESTE CAMPO SE REFIERE A : TIPO "FUND", "INCOME", "EXPENSE"
-      ).save!
-    rescue Exception => exc
-      puts "make_income_transaction error: log this error in some database or file", exc
-    end
+    target_account_owner = User.find_by id: target_account[:user_id]
+    create_transaction(Transaction.transaction_types[:income], :success, target_account_owner[:id])
   end
 
   def discount_from_source_account
@@ -120,8 +129,8 @@ class TransactionsService
     Account.transaction do
       begin
         Account.update(source_account[:id], balance: source_account_balance)
-      rescue Exception => exc
-        puts "discount_from_source_account error: log this error in some database or file", exc
+      rescue ActiveRecord::StatementInvalid => exc
+        puts 'discount_from_source_account error: log this error in some database or file', exc
       end
     end
   end
@@ -138,7 +147,7 @@ class TransactionsService
       end
   end
 
-  def create_transaction(transaction_type)
+  def create_transaction(transaction_type, status = :pending, owner_id = nil)
     Transaction.transaction do
       begin
         Transaction.create!(
@@ -148,11 +157,11 @@ class TransactionsService
           destination_account: @transaction[:destination_account],
           commission: transaction_commission,
           transaction_target_type: @transaction[:transaction_target_type],
-          transaction_status: Transaction.transaction_statuses[:pending],
+          transaction_status: Transaction.transaction_statuses[status],
           transaction_type: transaction_type
-        ).tap(&:save)
-      rescue Exception => exc
-        puts "create_transaction error: log this error in some database or file", exc
+        ).tap(&:save!)
+      rescue ActiveRecord::StatementInvalid => exc
+        puts 'create_transaction error: log this error in some database or file', exc
       end
     end
 
@@ -165,9 +174,9 @@ class TransactionsService
           transaction_id: transaction['id'],
           transaction_status: status,
           status_message: ''
-        ).tap(&:save)
-      rescue Exception => exc
-        puts "create_transaction_history error: log this error in some database or file", exc
+        ).tap(&:save!)
+      rescue ActiveRecord::StatementInvalid => exc
+        puts 'create_transaction_history error: log this error in some database or file', exc
       end
     end
   end
@@ -175,18 +184,6 @@ class TransactionsService
   def total_amount
     commission = transaction_commission
     @transaction[:amount].to_f + commission
-  end
-
-  def transfer_to_main_account
-    general_account = Account.find_by account_type: 'GENERAL'
-    general_account_balance = general_account[:balance]
-    Account.transaction do
-      begin
-        Account.update(general_account[:id], balance: general_account_balance + transaction_commission)
-      rescue Exception => exc
-        puts "transfer_to_main_account error: log this error in some database or file", exc
-      end
-    end
   end
 
   def enough_balance?
@@ -199,7 +196,7 @@ class TransactionsService
   def external_gateway_call
     sleep(5)
     {
-        status: 202,
+      status: 202,
         amount: @transaction[:amount]
     }
   end

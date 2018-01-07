@@ -6,6 +6,7 @@ RSpec.describe 'Transactions API', type: :request do
   let!(:transactions) { create_list(:transaction, 10) }
   let!(:accounts) { create_list(:account, 2)}
   let(:transaction_id) { transactions.first.id }
+  let(:test_account) { accounts[0].account_number }
   let!(:accounts) { create(:gaccount)}
   let(:headers) { valid_headers }
 
@@ -53,12 +54,11 @@ RSpec.describe 'Transactions API', type: :request do
 
   describe 'POST /transactions' do
     context 'when the request is correct' do
-
       let(:transaction_params) do
         {
           amount: 500.80,
           user_id: 1,
-          account_id: 1,
+          account_id: account,
           transaction_type: 0,
           transaction_status: 0,
           destination_account: 2,
@@ -80,6 +80,7 @@ RSpec.describe 'Transactions API', type: :request do
       before { post '/transactions', params: transaction_params, headers: headers}
 
       it 'creates a new transaction' do
+        puts " THIS IS THE ACCOUNT => ", account
         expect(json['amount']).to eq(TRANSACTION_AMOUNT)
       end
 

@@ -41,6 +41,8 @@ GEM
     apipie-rails (0.5.6)
       rails (>= 4.1)
     arel (8.0.0)
+    audited (4.5.0)
+      activerecord (>= 4.0, < 5.2)
     bcrypt (3.1.11)
     builder (3.2.3)
     byebug (9.1.0)
@@ -155,6 +157,7 @@ PLATFORMS
 
 DEPENDENCIES
   apipie-rails
+  audited (~> 4.5)
   bcrypt
   byebug
   database_cleaner
