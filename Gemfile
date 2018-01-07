@@ -51,3 +51,4 @@ gem 'apipie-rails'
 # Use ActiveModel has_secure_password
 gem 'bcrypt'
 gem 'jwt'
+gem "audited", "~> 4.5"
