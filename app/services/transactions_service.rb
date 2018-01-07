@@ -15,7 +15,13 @@ class TransactionsService
 
   end
 
+  def process_fund_account
+    new_transaction = create_transaction()
+  end
+
   def process_transaction
+    case 
+    when @transaction[:transaction_type] == "fund" then process_fund_account
     transaction_type_fund = @transaction[:transaction_type] == "fund"
     response = nil
     amount = @transaction[:amount].to_f
@@ -74,13 +80,12 @@ class TransactionsService
 
 
   def transfer_to_target_account
-    puts "TRANSFER TO TARGET ACCCOUNT"
     target_account = Account.find(@transaction[:destination_account])
     target_account_balance = target_account[:balance].to_f
     target_account_balance += @transaction[:amount].to_f
     Account.transaction do
       begin
-        Account.update(@transaction[:destination_account], balance: target_account_balance)
+        Account.update(target_account[:id], balance: target_account_balance)
         make_income_transaction
       rescue Exception => exc
         puts "transfer_to_target_account error: log this error in some database or file", exc
@@ -89,7 +94,7 @@ class TransactionsService
   end
 
   def make_income_transaction
-    target_account = Account.find_by id: @transaction[:destination_account]
+    target_account = Account.find(@transaction[:destination_account])
     target_account_owner = User.find_by id: target_account[:id]
     begin
       Transaction.create!(
@@ -100,7 +105,7 @@ class TransactionsService
           transaction_status: Transaction.transaction_statuses[:success],
           commission: 0,
           transaction_target_type: @transaction[:transaction_target_type],
-          transaction_type: Transaction.transaction_types[:income] #ESTE CAMPO SE REFIERE A : TIPO "FUND", "INCOME", "EXPENSE"
+          transaction_type: Transaction.transaction_types[:transference] #ESTE CAMPO SE REFIERE A : TIPO "FUND", "INCOME", "EXPENSE"
       ).save!
     rescue Exception => exc
       puts "make_income_transaction error: log this error in some database or file", exc
@@ -114,7 +119,7 @@ class TransactionsService
     source_account_balance -= total
     Account.transaction do
       begin
-        Account.update(@transaction[:account_id], balance: source_account_balance)
+        Account.update(source_account[:id], balance: source_account_balance)
       rescue Exception => exc
         puts "discount_from_source_account error: log this error in some database or file", exc
       end

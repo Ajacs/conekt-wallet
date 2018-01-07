@@ -31,4 +31,8 @@ class Message
   def self.expired_token
     'Sorry, your token has expired. Please login to continue.'
   end
+
+  def self.insufficient_funds
+    'Sorry, there are not enough funds to complete your operation, please change the amount'
+  end
 end

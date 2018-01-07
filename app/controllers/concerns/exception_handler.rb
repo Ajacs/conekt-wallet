@@ -5,6 +5,7 @@ module ExceptionHandler
   class AuthenticationError < StandardError; end
   class MissingToken < StandardError; end
   class InvalidToken < StandardError; end
+  class InsufficientFunds < StandardError; end
 
   included do
     # Define custom handlers
@@ -28,6 +29,11 @@ module ExceptionHandler
   # JSON response with message; Status code 401 - Unauthorized
   def unauthorized_request(e)
     json_response({ message: e.message }, :unauthorized)
+  end
+
+  #JSON response with message; Status code 400 - Bad Request
+  def insufficient_funds(e)
+    json_response({ message: e.message }, :bad_request)
   end
 
 end

@@ -6,7 +6,7 @@ class Transaction < ApplicationRecord
 
   enum transaction_target_type: %i[external internal]
 
-  enum transaction_type: %i[expense fund income]
+  enum transaction_type: %i[fund income transference]
 
   validates_presence_of :amount, :transaction_type, :transaction_target_type
 end

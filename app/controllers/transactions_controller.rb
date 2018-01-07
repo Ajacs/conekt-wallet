@@ -37,4 +37,17 @@ class TransactionsController < ApplicationController
   def transaction_service
     @transaction_service ||= TransactionsService.new(new_transaction: transaction_params)
   end
+
+  def accounts_exists?
+    @source_account = Account.find(transaction_params[:account_id])
+    if transaction_params[:transaction_target_type] == Transaction.transaction_target_types[:internal]
+      @target_account = Account.find(transaction_params[:destination_id])
+    end
+  end
+
+  def has_enough_balance?
+    if transaction_params[:transaction_type] != Transaction.transaction_types[:fund]
+      return enough_balance?(transaction_params) || raise(ExceptionHandler::InsufficientFunds, Message.insufficient_funds)
+    end
+  end
 end

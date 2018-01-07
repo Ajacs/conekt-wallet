@@ -5,7 +5,7 @@
 #
 #   movies = Movie.create([{ name: 'Star Wars' }, { name: 'Lord of the Rings' }])
 #   Character.create(name: 'Luke', movie: movies.first)
-
+require 'faker'
 
 #We create users
 #
@@ -15,7 +15,7 @@ user1 = User.create(
     name: 'Test1',
     lastname: 'Test1',
     email: 'test1@mail.com',
-    password_digest: 'test1',
+    password: 'test1',
     password_confirmation: 'test1'
 }).tap(&:save)
 
@@ -24,7 +24,7 @@ user2 = User.create(
         name: 'Test2',
         lastname: 'Test2',
         email: 'test2@mail.com',
-        password_digest: 'test2',
+        password: 'test2',
         password_confirmation: 'test2'
     }).tap(&:save)
 
@@ -33,7 +33,7 @@ root = User.create(
         name: 'Root',
         lastname: 'Root',
         email: 'supersecreataccount@gmail.com',
-        password_digest: 'secretpassword',
+        password: 'secretpassword',
         password_confirmation: 'secretpassword'
     }).tap(&:save)
 
@@ -43,6 +43,7 @@ root = User.create(
 Account.create({
                    user_id: user1[:id],
                    account_type: 'USER',
+                   account_number: Faker::Number.unique.number(10).to_s,
                    balance: 5000.0,
                    available: true
                }).save!
@@ -50,6 +51,7 @@ Account.create({
 Account.create({
                    user_id: user2[:id],
                    account_type: 'USER',
+                   account_number: Faker::Number.unique.number(10).to_s,
                    balance: 0.0,
                    available: true
                }).save!
@@ -57,6 +59,7 @@ Account.create({
 Account.create({
                    user_id: root[:id],
                    account_type: 'GENERAL',
+                   account_number: Faker::Number.unique.number(10).to_s,
                    balance: 0.0,
                    available: true
                }).save!
