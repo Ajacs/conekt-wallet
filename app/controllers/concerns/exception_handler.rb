@@ -5,6 +5,8 @@ module ExceptionHandler
   class AuthenticationError < StandardError; end
   class MissingToken < StandardError; end
   class InvalidToken < StandardError; end
+  class InsufficientFunds < StandardError; end
+  class SameSourceTargetAccount < StandardError; end
 
   included do
     # Define custom handlers
@@ -12,6 +14,8 @@ module ExceptionHandler
     rescue_from ExceptionHandler::AuthenticationError, with: :unauthorized_request
     rescue_from ExceptionHandler::MissingToken, with: :four_twenty_two
     rescue_from ExceptionHandler::InvalidToken, with: :four_twenty_two
+    rescue_from ExceptionHandler::InsufficientFunds, with: :insufficient_funds
+    rescue_from ExceptionHandler::SameSourceTargetAccount, with: :same_source_target_account
 
     rescue_from ActiveRecord::RecordNotFound do |e|
       json_response({ message: e.message }, :not_found)
@@ -28,6 +32,16 @@ module ExceptionHandler
   # JSON response with message; Status code 401 - Unauthorized
   def unauthorized_request(e)
     json_response({ message: e.message }, :unauthorized)
+  end
+
+  #JSON response with message; Status code 400 - Bad Request
+  def insufficient_funds(e)
+    json_response({ message: e.message }, :bad_request)
+  end
+
+  #JSON response with message; Status code 400 - Bad Request
+  def same_source_target_account(e)
+    json_response({ message: e.message }, :bad_request)
   end
 
 end

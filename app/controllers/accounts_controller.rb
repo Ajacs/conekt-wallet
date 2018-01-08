@@ -20,18 +20,11 @@ class AccountsController < ApplicationController
   #POST /accounts
   def create
     account_params['account_type'] = 'USER'
-    #This is just an example, by lack of time
-    # The account_number should be get in another form, this is just for the lab test
-    account_number = SecureRandom.uuid.gsub("-", "").hex
-    key = 'thesystemsecretkeytocypher';
-    cypher_account = AESCrypt.encrypt(key, account_number.to_s)
     @account = current_user.accounts.create!({
         user_id: account_params[:user_id],
         account_type: 'USER',
         balance: 0.0,
-        available: true,
-        account_number: account_number,
-        obfuscated_account:cypher_account
+        available: true
                                              })
     json_response(@account, :created)
   end
