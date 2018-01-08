@@ -7,19 +7,23 @@ This is the laboratory for Conekta, add request tests for the endpoints (transac
 This project was generated using Ruby 2.3.3 and Rails 5.1.4 --api only
 
 * System dependencies
+In order to create the database we need docker and docker-compose.
+Please visit [This link in to install Docker in your system](https://docs.docker.com/compose/install/)
 
 * Configuration
 
 To run this project you need to have installed rails and ruby in your system, 
 
 
+
 * Database creation
 
 Uses by default SQlite for the development database, for create just run:
 ```
-rake db:migrate
-rake db:migrate RAILS_ENV=test
-rake db:setup
+docker-compose run web rake db:create
+docker-compose run web rake db:migrate
+docker-compose run web rake db:migrate RAILS_ENV=test
+docker-compose run web rake db:setup
 ```
 
 * Database initialization
@@ -28,7 +32,7 @@ rake db:setup
 
 To run the tests just run 
 ```
-bundle exec rspec
+docker-compose run web bundle exec rspec
 ```
 
 * Services (job queues, cache servers, search engines, etc.)
@@ -37,7 +41,7 @@ bundle exec rspec
 
 * To Run the system just run:
 ```
-rails s
+docker-compose up
 ```
 
 This run the project on the 3000 port
