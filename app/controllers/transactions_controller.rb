@@ -42,7 +42,7 @@ class TransactionsController < ApplicationController
   def accounts_exists?
     @source_account = Account.find(transaction_params[:account_id])
     if transaction_params[:transaction_target_type] == Transaction.transaction_target_types[:internal]
-      @target_account = Account.find(transaction_params[:destination_id])
+      @target_account = Account.find(transaction_params[:destination_account])
     end
   end
 
@@ -53,7 +53,7 @@ class TransactionsController < ApplicationController
   end
 
   def source_and_target_equals?
-    if transaction_params[:account_id] == transaction_params[:destination_account]
+    if transaction_params[:transaction_type] != 'fund' && transaction_params[:account_id] == transaction_params[:destination_account]
       raise(ExceptionHandler::SameSourceTargetAccount, Message.same_source_target_account)
     end
   end

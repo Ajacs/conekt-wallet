@@ -95,7 +95,7 @@ class TransactionsService
     target_account_balance += amount
     Account.transaction do
       begin
-        Account.update!(target_account[:id], balance: target_account_balance)
+        Account.update(target_account[:id], balance: target_account_balance)
         make_income_transaction
       rescue ActiveRecord::StatementInvalid => exc
         puts 'transfer_to_target_account error: log this error in some database or file', exc
